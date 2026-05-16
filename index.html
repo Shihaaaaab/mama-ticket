@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mama Ticket - Bangladesh Railway Reservation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857', 900: '#064e3b' },
+                        dark: { 800: '#1e293b', 900: '#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Styles & Animations */
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .dark .glass { background: rgba(30, 41, 59, 0.8); border-color: rgba(255, 255, 255, 0.1); }
+        
+        /* Layout Management */
+        .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .view-section.active { display: block; opacity: 1; }
+        
+        /* Loader */
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-dark-900 dark:text-gray-200 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="glass fixed w-full z-50 top-0 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" onclick="app.navigate('home')" class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-train-subway text-brand-600 text-2xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Mama Ticket</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-6" id="nav-links">
+                    <a href="#" onclick="app.navigate('home')" class="text-gray-600 dark:text-gray-300 hover:text-brand-600 transition">Home</a>
+                    <a href="#" onclick="app.navigate('pnr')" class="text-gray-600 dark:text-gray-300 hover:text-brand-600 transition">PNR Status</a>
+                    <button onclick="app.toggleTheme()" class="text-gray-500 hover:text-brand-600 transition p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="fa-solid fa-moon" id="theme-icon"></i>
+                    </button>
+                    <!-- Auth specific links injected via JS -->
+                </div>
+                <!-- Mobile menu button -->
+                <div class="flex items-center md:hidden">
+                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-gray-500 hover:text-gray-700 p-2">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden glass border-t border-gray-200 dark:border-gray-700">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3" id="mobile-nav-links">
+                <!-- Links injected via JS -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow pt-16">
+        
+        <!-- HOME VIEW -->
+        <section id="view-home" class="view-section active">
+            <!-- Hero -->
+            <div class="relative bg-brand-900 overflow-hidden">
+                <div class="absolute inset-0">
+                    <img src="https://images.unsplash.com/photo-1474487548417-781cb71495f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80" alt="Train Journey" class="w-full h-full object-cover opacity-20">
+                </div>
+                <div class="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8 text-center">
+                    <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl mb-6">
+                        Seamless Travel Across Bangladesh
+                    </h1>
+                    <p class="mt-6 max-w-2xl mx-auto text-xl text-gray-300">
+                        Book your train tickets instantly with Mama Ticket. Experience modern railway booking.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Search Widget -->
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-10">
+                <div class="glass rounded-xl shadow-xl p-6 md:p-8">
+                    <form id="search-form" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Station</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-location-dot text-gray-400"></i>
+                                </div>
+                                <select id="search-from" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-brand-500 focus:border-brand-500 bg-white dark:bg-dark-800 dark:border-gray-600 dark:text-white">
+                                    <option value="">Select Origin</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Station</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-location-crosshairs text-gray-400"></i>
+                                </div>
+                                <select id="search-to" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-brand-500 focus:border-brand-500 bg-white dark:bg-dark-800 dark:border-gray-600 dark:text-white">
+                                    <option value="">Select Destination</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Journey Date</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa-regular fa-calendar text-gray-400"></i>
+                                </div>
+                                <input type="date" id="search-date" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-brand-500 focus:border-brand-500 bg-white dark:bg-dark-800 dark:border-gray-600 dark:text-white">
+                            </div>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-lg transition shadow-md flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-magnifying-glass"></i> Search Trains
+                                <div class="loader" id="search-loader"></div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Search Results Container -->
+            <div id="search-results-container" class="max-w-5xl mx-auto px-4 py-12 hidden">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-train text-brand-600"></i> Available Trains
+                </h2>
+                <div id="train-list" class="space-y-4">
+                    <!-- Results populated here -->
+                </div>
+            </div>
+            
+            <!-- Features -->
+            <div class="py-16 bg-gray-50 dark:bg-dark-900">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="text-center p-6 bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="w-16 h-16 mx-auto bg-brand-100 dark:bg-brand-900 rounded-full flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-bolt text-brand-600 dark:text-brand-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2">Instant Booking</h3>
+                            <p class="text-gray-600 dark:text-gray-400">Real-time seat allocation and immediate PNR generation.</p>
+                        </div>
+                        <div class="text-center p-6 bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="w-16 h-16 mx-auto bg-brand-100 dark:bg-brand-900 rounded-full flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-shield-halved text-brand-600 dark:text-brand-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2">Secure Transactions</h3>
+                            <p class="text-gray-600 dark:text-gray-400">Advanced ACID properties ensure no double bookings.</p>
+                        </div>
+                        <div class="text-center p-6 bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="w-16 h-16 mx-auto bg-brand-100 dark:bg-brand-900 rounded-full flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-money-bill-transfer text-brand-600 dark:text-brand-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2">Easy Refunds</h3>
+                            <p class="text-gray-600 dark:text-gray-400">Automated cancellation and fast refund processing system.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AUTH VIEW (Login/Register) -->
+        <section id="view-auth" class="view-section py-20 px-4">
+            <div class="max-w-md mx-auto glass rounded-2xl shadow-xl overflow-hidden">
+                <div class="flex border-b border-gray-200 dark:border-gray-700">
+                    <button onclick="app.switchAuthTab('login')" id="tab-login" class="flex-1 py-4 text-center font-medium text-brand-600 border-b-2 border-brand-600 bg-gray-50 dark:bg-dark-800">Login</button>
+                    <button onclick="app.switchAuthTab('register')" id="tab-register" class="flex-1 py-4 text-center font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 bg-white dark:bg-dark-900">Register</button>
+                </div>
+                
+                <div class="p-8">
+                    <!-- Login Form -->
+                    <form id="login-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Email / Phone</label>
+                            <input type="text" required class="w-full px-4 py-2 border rounded-lg focus:ring-brand-500 focus:border-brand-500 dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Password</label>
+                            <input type="password" required class="w-full px-4 py-2 border rounded-lg focus:ring-brand-500 focus:border-brand-500 dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 rounded-lg transition">Sign In</button>
+                        <p class="text-center text-sm text-gray-500 mt-4">Admin test credentials:<br>admin@mamaticket.com / admin123</p>
+                    </form>
+
+                    <!-- Register Form -->
+                    <form id="register-form" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Full Name</label>
+                            <input type="text" required class="w-full px-4 py-2 border rounded-lg dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Email</label>
+                            <input type="email" required class="w-full px-4 py-2 border rounded-lg dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Phone</label>
+                            <input type="tel" required class="w-full px-4 py-2 border rounded-lg dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Password</label>
+                            <input type="password" required class="w-full px-4 py-2 border rounded-lg dark:bg-dark-800 dark:border-gray-600">
+                        </div>
+                        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 rounded-lg transition">Create Account</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- DASHBOARD VIEW (Passenger/Admin) -->
+        <section id="view-dashboard" class="view-section h-full">
+            <div class="flex h-[calc(100vh-64px)] overflow-hidden">
+                <!-- Sidebar -->
+                <aside class="w-64 bg-white dark:bg-dark-800 border-r border-gray-200 dark:border-gray-700 hidden md:block overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex items-center gap-3 mb-8">
+                            <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xl" id="user-initial">U</div>
+                            <div>
+                                <p class="font-semibold text-sm" id="user-name-display">User Name</p>
+                                <p class="text-xs text-gray-500 uppercase" id="user-role-display">PASSENGER</p>
+                            </div>
+                        </div>
+                        <nav class="space-y-2" id="sidebar-nav">
+                            <!-- Injected via JS based on role -->
+                        </nav>
+                    </div>
+                </aside>
+                
+                <!-- Main Content -->
+                <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-900 p-6" id="dashboard-content">
+                    <!-- Dynamic content loads here -->
+                </main>
+            </div>
+        </section>
+
+        <!-- PNR STATUS VIEW -->
+        <section id="view-pnr" class="view-section py-20 px-4">
+            <div class="max-w-xl mx-auto text-center">
+                <h2 class="text-3xl font-bold mb-6">Check PNR Status</h2>
+                <div class="glass rounded-xl p-8 shadow-lg">
+                    <form id="pnr-form" class="flex gap-4">
+                        <input type="text" id="pnr-input" placeholder="Enter 10-digit PNR Number" required pattern="\d{10}" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 text-lg text-center tracking-widest dark:bg-dark-800 dark:border-gray-600 uppercase">
+                        <button type="submit" class="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition whitespace-nowrap">
+                            Check Status
+                        </button>
+                    </form>
+                    <div id="pnr-result" class="mt-8 hidden text-left bg-white dark:bg-dark-800 rounded-lg p-6 border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden">
+                        <!-- PNR Result injected here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BOOKING MODAL -->
+        <div id="booking-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center px-4 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-dark-800 z-10">
+                    <h3 class="text-xl font-bold" id="modal-train-name">Book Ticket</h3>
+                    <button onclick="app.closeModal()" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+                <div class="p-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 p-4 rounded-lg mb-6 flex gap-3 text-sm">
+                        <i class="fa-solid fa-circle-info mt-0.5"></i>
+                        <p>You can add up to 4 passengers per booking. Real-time seat availability is checked upon submission.</p>
+                    </div>
+                    
+                    <form id="checkout-form" class="space-y-6">
+                        <!-- Train Info Summary -->
+                        <div class="grid grid-cols-2 gap-4 text-sm p-4 bg-gray-50 dark:bg-dark-900 rounded-lg border border-gray-200 dark:border-gray-700" id="booking-summary">
+                            <!-- Injected by JS -->
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Select Class</label>
+                            <select id="booking-class" class="w-full px-4 py-2 border rounded-lg dark:bg-dark-800 dark:border-gray-600" onchange="app.updateTotalFare()">
+                                <option value="SNIGDHA" data-fare="850">SNIGDHA - ৳850</option>
+                                <option value="AC_S" data-fare="1200">AC SEAT - ৳1200</option>
+                                <option value="SHOVAN_CHAIR" data-fare="450">SHOVAN CHAIR - ৳450</option>
+                            </select>
+                        </div>
+
+                        <!-- Passenger Details -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-medium">Passenger Details</label>
+                                <button type="button" onclick="app.addPassengerRow()" class="text-xs text-brand-600 font-semibold hover:underline">+ Add Passenger</button>
+                            </div>
+                            <div id="passenger-rows" class="space-y-3">
+                                <div class="flex gap-3 passenger-row">
+                                    <input type="text" placeholder="Full Name" required class="flex-1 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                                    <input type="number" placeholder="Age" required min="1" max="120" class="w-20 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                                    <select class="w-28 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                                        <option value="M">Male</option>
+                                        <option value="F">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment -->
+                        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Total Amount:</span>
+                                <span class="text-2xl font-bold text-brand-600" id="total-fare-display">৳0</span>
+                            </div>
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg shadow-lg transition-transform transform hover:scale-[1.02]">
+                                Pay & Confirm Booking
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-[70] flex items-center gap-3">
+            <i class="fa-solid fa-circle-check text-brand-500" id="toast-icon"></i>
+            <span id="toast-msg">Notification</span>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-dark-900 border-t border-gray-200 dark:border-gray-800 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <div class="md:flex md:items-center md:justify-between">
+                <div class="flex justify-center md:justify-start mb-6 md:mb-0">
+                    <span class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-train text-brand-600"></i> Mama Ticket
+                    </span>
+                </div>
+                <div class="flex justify-center space-x-6 md:order-2">
+                    <span class="text-sm text-gray-500">© 2026 Mama Ticket DBMS Project. All rights reserved.</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Application Logic -->
+    <script>
+        const app = {
+            state: {
+                user: null, // { name, role: 'passenger' | 'admin', token }
+                currentView: 'home',
+                theme: 'light',
+                selectedTrainForBooking: null,
+                stations: ['Dhaka', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Rangpur', 'Cumilla', 'Dinajpur', 'Feni'],
+                mockTrains: [
+                    { id: 1, code: '701', name: 'Suborno Express', from: 'Dhaka', to: 'Chattogram', dep: '16:30', arr: '22:10', seats: 45, type: 'Intercity' },
+                    { id: 2, code: '719', name: 'Paharika Express', from: 'Sylhet', to: 'Chattogram', dep: '10:15', arr: '19:45', seats: 12, type: 'Intercity' },
+                    { id: 3, code: '759', name: 'Padma Express', from: 'Dhaka', to: 'Rajshahi', dep: '23:00', arr: '04:30', seats: 0, waitlist: 5, type: 'Intercity' },
+                    { id: 4, code: '797', name: 'Kurigram Express', from: 'Dhaka', to: 'Rangpur', dep: '20:45', arr: '06:15', seats: 120, type: 'Intercity' }
+                ],
+                mockBookings: [
+                    { pnr: 'MT74829104', date: '2026-05-20', train: 'Suborno Express', status: 'CONFIRMED', from: 'Dhaka', to: 'Chattogram', passengers: 2 }
+                ]
+            },
+
+            init() {
+                // Theme setup
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    this.toggleTheme(true);
+                }
+                
+                // Populate dropdowns
+                this.populateStations();
+                
+                // Set default date to today
+                document.getElementById('search-date').valueAsDate = new Date();
+
+                // Bind Form Submissions
+                document.getElementById('search-form').addEventListener('submit', this.handleSearch.bind(this));
+                document.getElementById('login-form').addEventListener('submit', this.handleLogin.bind(this));
+                document.getElementById('pnr-form').addEventListener('submit', this.handlePNR.bind(this));
+                document.getElementById('checkout-form').addEventListener('submit', this.handleBooking.bind(this));
+
+                this.updateNav();
+                this.navigate('home');
+            },
+
+            toggleTheme(forceDark = false) {
+                const html = document.documentElement;
+                const icon = document.getElementById('theme-icon');
+                if (html.classList.contains('dark') && !forceDark) {
+                    html.classList.remove('dark');
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                    this.state.theme = 'light';
+                } else {
+                    html.classList.add('dark');
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                    this.state.theme = 'dark';
+                }
+            },
+
+            navigate(view) {
+                // Hide all views
+                document.querySelectorAll('.view-section').forEach(el => {
+                    el.classList.remove('active');
+                    setTimeout(() => el.style.display = 'none', 300); // match transition
+                });
+
+                // Auth protection for dashboard
+                if (view === 'dashboard' && !this.state.user) {
+                    this.showToast('Please login first', 'error');
+                    view = 'auth';
+                }
+
+                // Show target view
+                setTimeout(() => {
+                    const target = document.getElementById(`view-${view}`);
+                    target.style.display = 'block';
+                    // trigger reflow
+                    void target.offsetWidth;
+                    target.classList.add('active');
+                }, 300);
+
+                this.state.currentView = view;
+                if(view === 'dashboard') this.renderDashboard();
+                
+                // Close mobile menu
+                document.getElementById('mobile-menu').classList.add('hidden');
+            },
+
+            updateNav() {
+                const linksContainer = document.getElementById('nav-links');
+                const mobileLinksContainer = document.getElementById('mobile-nav-links');
+                
+                let authLinks = '';
+                if (this.state.user) {
+                    authLinks = `
+                        <a href="#" onclick="app.navigate('dashboard')" class="text-brand-600 font-medium hover:text-brand-700">Dashboard</a>
+                        <button onclick="app.logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition dark:bg-red-900/20 dark:hover:bg-red-900/40">Logout</button>
+                    `;
+                } else {
+                    authLinks = `
+                        <button onclick="app.navigate('auth')" class="bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition shadow-sm">Login / Register</button>
+                    `;
+                }
+
+                // Append to existing static links
+                const staticLinks = `
+                    <a href="#" onclick="app.navigate('home')" class="text-gray-600 dark:text-gray-300 hover:text-brand-600 transition">Home</a>
+                    <a href="#" onclick="app.navigate('pnr')" class="text-gray-600 dark:text-gray-300 hover:text-brand-600 transition">PNR Status</a>
+                `;
+                
+                linksContainer.innerHTML = staticLinks + `
+                    <button onclick="app.toggleTheme()" class="text-gray-500 hover:text-brand-600 transition p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="fa-solid fa-moon" id="theme-icon"></i>
+                    </button>
+                ` + authLinks;
+                
+                mobileLinksContainer.innerHTML = staticLinks.replace(/class="/g, 'class="block px-3 py-2 rounded-md text-base font-medium ') + authLinks.replace(/class="/g, 'class="block mt-2 w-full text-left px-3 py-2 ');
+                
+                // Keep theme icon in sync
+                if(this.state.theme === 'dark') document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
+            },
+
+            populateStations() {
+                const from = document.getElementById('search-from');
+                const to = document.getElementById('search-to');
+                this.state.stations.sort().forEach(station => {
+                    from.add(new Option(station, station));
+                    to.add(new Option(station, station));
+                });
+            },
+
+            switchAuthTab(tab) {
+                const isLogin = tab === 'login';
+                document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+                document.getElementById('register-form').classList.toggle('hidden', isLogin);
+                
+                const loginTab = document.getElementById('tab-login');
+                const regTab = document.getElementById('tab-register');
+                
+                if (isLogin) {
+                    loginTab.className = "flex-1 py-4 text-center font-medium text-brand-600 border-b-2 border-brand-600 bg-gray-50 dark:bg-dark-800";
+                    regTab.className = "flex-1 py-4 text-center font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 bg-white dark:bg-dark-900";
+                } else {
+                    regTab.className = "flex-1 py-4 text-center font-medium text-brand-600 border-b-2 border-brand-600 bg-gray-50 dark:bg-dark-800";
+                    loginTab.className = "flex-1 py-4 text-center font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 bg-white dark:bg-dark-900";
+                }
+            },
+
+            handleLogin(e) {
+                e.preventDefault();
+                const email = e.target.querySelector('input[type="text"]').value;
+                // Mock Backend Auth Logic
+                if (email.includes('admin')) {
+                    this.state.user = { name: 'System Administrator', role: 'admin' };
+                } else {
+                    this.state.user = { name: 'Rahim Uddin', role: 'passenger' };
+                }
+                
+                this.showToast(`Welcome back, ${this.state.user.name}`);
+                this.updateNav();
+                this.navigate('dashboard');
+                e.target.reset();
+            },
+
+            logout() {
+                this.state.user = null;
+                this.updateNav();
+                this.navigate('home');
+                this.showToast('Logged out successfully');
+            },
+
+            handleSearch(e) {
+                e.preventDefault();
+                const from = document.getElementById('search-from').value;
+                const to = document.getElementById('search-to').value;
+                const date = document.getElementById('search-date').value;
+
+                if (from === to) {
+                    this.showToast('Origin and Destination cannot be same', 'error');
+                    return;
+                }
+
+                document.getElementById('search-loader').style.display = 'block';
+                
+                // Simulate API Call
+                setTimeout(() => {
+                    document.getElementById('search-loader').style.display = 'none';
+                    const results = this.state.mockTrains.filter(t => 
+                        (t.from === from && t.to === to) || (from === '' && to === '') // Show all if mock
+                    );
+                    this.renderSearchResults(results, date);
+                }, 800);
+            },
+
+            renderSearchResults(trains, date) {
+                const container = document.getElementById('search-results-container');
+                const list = document.getElementById('train-list');
+                container.classList.remove('hidden');
+                
+                if (trains.length === 0) {
+                    list.innerHTML = `<div class="text-center py-8 text-gray-500 bg-white dark:bg-dark-800 rounded-lg">No trains found for this route.</div>`;
+                    return;
+                }
+
+                list.innerHTML = trains.map(train => {
+                    const isWaitlist = train.seats === 0;
+                    const statusBadge = isWaitlist 
+                        ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">WL - ${train.waitlist}</span>`
+                        : `<span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">AVL - ${train.seats}</span>`;
+                    
+                    return `
+                        <div class="bg-white dark:bg-dark-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition">
+                            <div class="flex-1 w-full">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">${train.name}</h3>
+                                    <span class="text-sm text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600">${train.code}</span>
+                                </div>
+                                <div class="flex items-center justify-between md:justify-start md:gap-12 text-sm">
+                                    <div>
+                                        <p class="font-bold text-xl">${train.dep}</p>
+                                        <p class="text-gray-500">${train.from}</p>
+                                    </div>
+                                    <div class="flex flex-col items-center px-4">
+                                        <span class="text-xs text-gray-400 mb-1">05h 40m</span>
+                                        <div class="w-full flex items-center">
+                                            <div class="h-2 w-2 rounded-full border-2 border-brand-500"></div>
+                                            <div class="h-px w-16 md:w-24 bg-gray-300 dark:bg-gray-600 border-dashed border-t border-gray-400"></div>
+                                            <div class="h-2 w-2 rounded-full bg-brand-500"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-xl">${train.arr}</p>
+                                        <p class="text-gray-500">${train.to}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col md:items-end gap-3 w-full md:w-auto border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 pt-4 md:pt-0 md:pl-6">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-500">Status:</span>
+                                    ${statusBadge}
+                                </div>
+                                <button onclick='app.openBookingModal(${JSON.stringify(train)})' class="w-full md:w-auto bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                                    Book Now
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            openBookingModal(train) {
+                if (!this.state.user) {
+                    this.showToast('Please login to book tickets', 'error');
+                    this.navigate('auth');
+                    return;
+                }
+                this.state.selectedTrainForBooking = train;
+                document.getElementById('modal-train-name').innerText = `Book ${train.name} (${train.code})`;
+                
+                const date = document.getElementById('search-date').value || new Date().toISOString().split('T')[0];
+                
+                document.getElementById('booking-summary').innerHTML = `
+                    <div><span class="text-gray-500">From:</span> <br><strong>${train.from} (${train.dep})</strong></div>
+                    <div><span class="text-gray-500">To:</span> <br><strong>${train.to} (${train.arr})</strong></div>
+                    <div><span class="text-gray-500">Date:</span> <br><strong>${date}</strong></div>
+                    <div><span class="text-gray-500">Availability:</span> <br><strong class="${train.seats>0?'text-green-600':'text-yellow-600'}">${train.seats > 0 ? train.seats + ' Seats' : 'Waitlist'}</strong></div>
+                `;
+                
+                document.getElementById('passenger-rows').innerHTML = `
+                    <div class="flex gap-3 passenger-row">
+                        <input type="text" placeholder="Full Name" value="${this.state.user.name}" required class="flex-1 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                        <input type="number" placeholder="Age" required min="1" max="120" class="w-20 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                        <select class="w-28 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                            <option value="M">Male</option><option value="F">Female</option>
+                        </select>
+                    </div>`;
+                
+                this.updateTotalFare();
+                document.getElementById('booking-modal').classList.remove('hidden');
+            },
+
+            closeModal() {
+                document.getElementById('booking-modal').classList.add('hidden');
+            },
+
+            addPassengerRow() {
+                const rows = document.querySelectorAll('.passenger-row').length;
+                if(rows >= 4) {
+                    this.showToast('Maximum 4 passengers allowed', 'error');
+                    return;
+                }
+                const div = document.createElement('div');
+                div.className = 'flex gap-3 passenger-row mt-3';
+                div.innerHTML = `
+                    <input type="text" placeholder="Full Name" required class="flex-1 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                    <input type="number" placeholder="Age" required min="1" max="120" class="w-20 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                    <select class="w-28 px-3 py-2 border rounded-md dark:bg-dark-800 dark:border-gray-600 text-sm">
+                        <option value="M">Male</option><option value="F">Female</option>
+                    </select>
+                    <button type="button" onclick="this.parentElement.remove(); app.updateTotalFare()" class="text-red-500 hover:text-red-700 px-2"><i class="fa-solid fa-trash"></i></button>
+                `;
+                document.getElementById('passenger-rows').appendChild(div);
+                this.updateTotalFare();
+            },
+
+            updateTotalFare() {
+                const select = document.getElementById('booking-class');
+                const fare = parseInt(select.options[select.selectedIndex].dataset.fare);
+                const count = document.querySelectorAll('.passenger-row').length;
+                
+                // Add 15% VAT and 50 tk bank charge
+                const baseFare = fare * count;
+                const vat = baseFare * 0.15;
+                const total = baseFare + vat + 50;
+                
+                document.getElementById('total-fare-display').innerText = `৳${Math.round(total)}`;
+            },
+
+            handleBooking(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<div class="loader" style="display:inline-block; border-top-color:white; width:16px; height:16px;"></div> Processing Transaction...';
+                btn.disabled = true;
+
+                // Simulate DB Transaction Delay
+                setTimeout(() => {
+                    this.closeModal();
+                    const pnr = 'MT' + Math.floor(10000000 + Math.random() * 90000000); // 10 digit
+                    
+                    // Add to mock data
+                    this.state.mockBookings.push({
+                        pnr: pnr,
+                        date: document.getElementById('search-date').value || new Date().toISOString().split('T')[0],
+                        train: this.state.selectedTrainForBooking.name,
+                        status: this.state.selectedTrainForBooking.seats > 0 ? 'CONFIRMED' : 'WAITING',
+                        from: this.state.selectedTrainForBooking.from,
+                        to: this.state.selectedTrainForBooking.to,
+                        passengers: document.querySelectorAll('.passenger-row').length
+                    });
+
+                    this.showToast(`Booking Successful! PNR: ${pnr}`);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    
+                    // Auto redirect to dashboard tickets
+                    this.navigate('dashboard');
+                }, 1500);
+            },
+
+            handlePNR(e) {
+                e.preventDefault();
+                const pnrInput = document.getElementById('pnr-input').value.toUpperCase();
+                const resultDiv = document.getElementById('pnr-result');
+                const btn = e.target.querySelector('button');
+                
+                btn.innerHTML = 'Searching...';
+                
+                setTimeout(() => {
+                    const booking = this.state.mockBookings.find(b => b.pnr === pnrInput);
+                    
+                    if (booking) {
+                        const statusColor = booking.status === 'CONFIRMED' ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100';
+                        resultDiv.innerHTML = `
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-bl-full -z-10 dark:bg-brand-900/20"></div>
+                            <div class="flex justify-between items-start mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                                <div>
+                                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">${booking.pnr}</h3>
+                                    <p class="text-sm text-gray-500">Journey Date: ${booking.date}</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full font-bold text-xs tracking-wider ${statusColor}">${booking.status}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><p class="text-gray-500">Train</p><p class="font-bold">${booking.train}</p></div>
+                                <div><p class="text-gray-500">Passengers</p><p class="font-bold">${booking.passengers} Adult(s)</p></div>
+                                <div><p class="text-gray-500">From</p><p class="font-bold">${booking.from}</p></div>
+                                <div><p class="text-gray-500">To</p><p class="font-bold">${booking.to}</p></div>
+                                ${booking.status === 'CONFIRMED' ? `<div class="col-span-2 mt-2 p-3 bg-gray-50 dark:bg-dark-900 rounded border border-gray-200 dark:border-gray-700 flex justify-between items-center"><span class="font-mono">Coach: SNIGDHA (KHA)</span> <span class="font-mono font-bold text-brand-600">Seats: 12, 13</span></div>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `<div class="text-center text-red-500 py-4"><i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i><br>Invalid PNR or Booking Not Found</div>`;
+                    }
+                    resultDiv.classList.remove('hidden');
+                    btn.innerHTML = 'Check Status';
+                }, 800);
+            },
+
+            renderDashboard() {
+                if(!this.state.user) return;
+
+                document.getElementById('user-initial').innerText = this.state.user.name.charAt(0);
+                document.getElementById('user-name-display').innerText = this.state.user.name;
+                document.getElementById('user-role-display').innerText = this.state.user.role;
+
+                const nav = document.getElementById('sidebar-nav');
+                const content = document.getElementById('dashboard-content');
+
+                if (this.state.user.role === 'admin') {
+                    nav.innerHTML = `
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 bg-brand-50 text-brand-600 rounded-lg font-medium dark:bg-brand-900/30"><i class="fa-solid fa-chart-pie w-5"></i> Overview</a>
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition dark:text-gray-400 dark:hover:bg-dark-800"><i class="fa-solid fa-train w-5"></i> Manage Trains</a>
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition dark:text-gray-400 dark:hover:bg-dark-800"><i class="fa-solid fa-users w-5"></i> Users</a>
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition dark:text-gray-400 dark:hover:bg-dark-800"><i class="fa-solid fa-money-bill-transfer w-5"></i> Refunds</a>
+                    `;
+                    
+                    content.innerHTML = `
+                        <h2 class="text-2xl font-bold mb-6">Admin Dashboard</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                            <div class="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <p class="text-sm text-gray-500 mb-1">Total Revenue Today</p>
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white">৳ 1,45,200</p>
+                            </div>
+                            <div class="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <p class="text-sm text-gray-500 mb-1">Active Trains</p>
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white">15</p>
+                            </div>
+                            <div class="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <p class="text-sm text-gray-500 mb-1">Bookings Today</p>
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white">428</p>
+                            </div>
+                            <div class="bg-white dark:bg-dark-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <p class="text-sm text-gray-500 mb-1">Pending Refunds</p>
+                                <p class="text-2xl font-bold text-red-500">12</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                            <h3 class="font-bold text-lg mb-4 border-b pb-2 dark:border-gray-700">Recent Transactions (DBMS View)</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-50 dark:bg-dark-900 text-gray-500">
+                                        <tr><th class="p-3">Tnx ID</th><th class="p-3">PNR</th><th class="p-3">Query Type</th><th class="p-3">Status</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        <tr><td class="p-3 font-mono">TX-992</td><td class="p-3">MT74829104</td><td class="p-3"><code class="text-blue-500 bg-blue-50 px-1 rounded">CALL book_ticket()</code></td><td class="p-3 text-green-500">COMMITTED</td></tr>
+                                        <tr><td class="p-3 font-mono">TX-991</td><td class="p-3">MT10293847</td><td class="p-3"><code class="text-red-500 bg-red-50 px-1 rounded">CALL process_refund()</code></td><td class="p-3 text-green-500">COMMITTED</td></tr>
+                                        <tr><td class="p-3 font-mono">TX-990</td><td class="p-3">MT99382121</td><td class="p-3"><code class="text-blue-500 bg-blue-50 px-1 rounded">CALL book_ticket()</code></td><td class="p-3 text-red-500">ROLLBACK (No Seats)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    nav.innerHTML = `
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 bg-brand-50 text-brand-600 rounded-lg font-medium dark:bg-brand-900/30"><i class="fa-solid fa-ticket w-5"></i> My Tickets</a>
+                        <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition dark:text-gray-400 dark:hover:bg-dark-800"><i class="fa-solid fa-user w-5"></i> Profile</a>
+                    `;
+                    
+                    let ticketsHtml = this.state.mockBookings.map(b => `
+                        <div class="bg-white dark:bg-dark-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-4 flex justify-between items-center hover:shadow-md transition">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">PNR: <span class="font-mono text-gray-900 dark:text-gray-300 font-bold">${b.pnr}</span></p>
+                                <h4 class="font-bold text-lg">${b.train}</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">${b.from} <i class="fa-solid fa-arrow-right mx-1 text-xs"></i> ${b.to} | ${b.date}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-block px-3 py-1 rounded text-xs font-bold mb-2 ${b.status==='CONFIRMED'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">${b.status}</span>
+                                <div>
+                                    <button class="text-sm text-brand-600 hover:underline mr-3"><i class="fa-solid fa-download"></i> PDF</button>
+                                    <button class="text-sm text-red-500 hover:underline" onclick="app.showToast('Cancellation initiated (Mock)', 'error')">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    content.innerHTML = `
+                        <h2 class="text-2xl font-bold mb-6">My Bookings</h2>
+                        <div class="max-w-3xl">
+                            ${ticketsHtml || '<div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500">No bookings found. <br><a href="#" onclick="app.navigate(\'home\')" class="text-brand-600 hover:underline mt-2 inline-block">Book a ticket now</a></div>'}
+                        </div>
+                    `;
+                }
+            },
+
+            showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const icon = document.getElementById('toast-icon');
+                const msg = document.getElementById('toast-msg');
+                
+                msg.innerText = message;
+                
+                if (type === 'error') {
+                    icon.className = 'fa-solid fa-circle-exclamation text-red-500';
+                    toast.classList.add('border-l-4', 'border-red-500');
+                } else {
+                    icon.className = 'fa-solid fa-circle-check text-brand-500';
+                    toast.classList.add('border-l-4', 'border-brand-500');
+                }
+
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                    setTimeout(() => toast.className = 'fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-[70] flex items-center gap-3', 300);
+                }, 3000);
+            }
+        };
+
+        // Initialize App on Load
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
